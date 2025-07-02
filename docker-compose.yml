@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # 推論APIサーバー
+  yolo-api:
+    build:
+      context: .
+      dockerfile: dockerfile/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      - ./results:/app/results
+      - ./logs:/app/logs
+    environment:
+      - LOG_LEVEL=INFO
+      - MODEL_PATH=/app/models
+      - UPLOAD_PATH=/app/uploads
+      - RESULTS_PATH=/app/results
+    restart: unless-stopped
+    
+  # 学習・評価用環境
+  yolo-train:
+    build:
+      context: .
+      dockerfile: dockerfile/Dockerfile
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./runs:/app/runs
+      - ./logs:/app/logs
+      - ./analysis:/app/analysis
+    environment:
+      - LOG_LEVEL=DEBUG
+      - WANDB_MODE=online
+    command: ["tail", "-f", "/dev/null"]  # 学習時はinteractiveモード
+    
+  # CPUベンチマーク専用
+  yolo-benchmark:
+    build:
+      context: .
+      dockerfile: dockerfile/Dockerfile
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./analysis:/app/analysis
+      - ./logs:/app/logs
+    environment:
+      - LOG_LEVEL=DEBUG
+      - BENCHMARK_MODE=CPU_ONLY
+    command: ["uv", "run", "python", "scripts/benchmark_suite.py"]
+
+networks:
+  default:
+    name: yolo-network
