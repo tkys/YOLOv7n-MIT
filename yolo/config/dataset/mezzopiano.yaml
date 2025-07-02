@@ -1,0 +1,17 @@
+# Mezzopiano Dataset Configuration for YOLOv7n MIT version
+path: /home/tkys/playground/signage-narumiya/pre-20250701/data/yolo_dataset_fixed
+train: train
+validation: val
+
+# Class configuration
+class_num: 1
+class_list:
+  - mezzopiano
+
+# Dataset statistics
+train_images: 100
+val_images: 80
+total_images: 180
+
+# Training optimization settings
+auto_download: false  # Local dataset, no download needed

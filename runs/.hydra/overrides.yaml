@@ -1,0 +1,10 @@
+- task=train
+- dataset=mezzopiano
+- model=v9-s
+- device=0
+- task.epoch=15
+- task.data.batch_size=16
+- task.optimizer.args.lr=0.001
+- use_wandb=true
+- name=wandb_detailed_logging
+- weight=weights/v9-s.pt

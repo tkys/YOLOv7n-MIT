@@ -1,0 +1,72 @@
+# Mezzopiano Training Configuration
+# Optimized for small dataset Transfer Learning
+
+task: train
+epoch: 100
+save_interval: 10
+
+# Data Configuration
+data:
+  batch_size: 8          # Small batch for limited dataset
+  image_size: [640, 640]
+  cpu_num: 4
+  shuffle: true
+  pin_memory: true
+  
+  # Data Augmentation - Conservative for small dataset
+  data_augment:
+    Mosaic: 0.8          # Reduced mosaic probability
+    RandomCrop: 0.5      # Moderate cropping
+    RemoveOutliers: 1.0e-08
+
+# Optimizer Configuration - Transfer Learning optimized
+optimizer:
+  type: AdamW
+  args:
+    lr: 0.001            # Lower learning rate for fine-tuning
+    weight_decay: 0.0005
+    betas: [0.9, 0.999]
+
+# Loss Configuration
+loss:
+  objective:
+    BCELoss: 0.5         # Classification loss
+    BoxLoss: 7.5         # Bounding box regression loss
+    DFLoss: 1.5          # Distribution focal loss
+  aux: 0.25              # Auxiliary loss weight
+  matcher:
+    iou: CIoU            # Complete IoU for better localization
+    topk: 10
+    factor:
+      iou: 6.0
+      cls: 0.5
+
+# Scheduler Configuration
+scheduler:
+  type: CosineAnnealingLR
+  warmup:
+    epochs: 3.0
+  args:
+    T_max: ${task.epoch}
+    eta_min: 0.0001
+
+# EMA Configuration
+ema:
+  enable: true
+  decay: 0.9999
+
+# Validation Configuration
+validation:
+  task: validation
+  data:
+    batch_size: 16
+    image_size: ${task.data.image_size}
+    cpu_num: ${task.data.cpu_num}
+    shuffle: false
+    pin_memory: true
+    data_augment: {}
+    dynamic_shape: false
+  nms:
+    min_confidence: 0.25   # Confidence threshold
+    min_iou: 0.45         # NMS IoU threshold
+    max_bbox: 100         # Maximum detections per image

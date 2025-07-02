@@ -111,17 +111,36 @@ dmypy.json
 .prof
 
 # Machine learning specific folders and symlinks
-runs
+runs/train/*/
+runs/val/*/
+!runs/train/.gitkeep
+!runs/val/.gitkeep
 /data
 /datasets
 */data
 
-# Datasets and model checkpoints
+# Datasets and model checkpoints  
 *.ckpt
 *.pth
 *.pt
 *.trt
-*.onnx
+# Keep example ONNX models for distribution
+# *.onnx
+
+# Virtual environments
+yolo-training/
+
+# Analysis and logs
+analysis/*/
+!analysis/.gitkeep
+logs/
+wandb/
+.wandb/
+
+# Weights directory (keep structure but ignore models)
+weights/*.pt
+weights/*.pth
+pretrained_weights/*.pt
 
 # Image files
 *.png

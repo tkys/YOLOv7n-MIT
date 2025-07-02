@@ -1,0 +1,246 @@
+name: wandb_detailed_logging
+task:
+  validation:
+    task: validation
+    data:
+      batch_size: 32
+      image_size: ${image_size}
+      cpu_num: ${cpu_num}
+      shuffle: false
+      pin_memory: true
+      data_augment: {}
+      dynamic_shape: false
+    nms:
+      min_confidence: 0.0001
+      min_iou: 0.7
+      max_bbox: 1000
+  task: train
+  epoch: 15
+  data:
+    batch_size: 16
+    image_size: ${image_size}
+    cpu_num: ${cpu_num}
+    shuffle: true
+    pin_memory: true
+    data_augment:
+      Mosaic: 1
+      RandomCrop: 1
+      RemoveOutliers: 1.0e-08
+  optimizer:
+    type: SGD
+    args:
+      lr: 0.001
+      weight_decay: 0.0005
+      momentum: 0.937
+      nesterov: true
+  loss:
+    objective:
+      BCELoss: 0.5
+      BoxLoss: 7.5
+      DFLoss: 1.5
+    aux: 0.25
+    matcher:
+      iou: CIoU
+      topk: 10
+      factor:
+        iou: 6.0
+        cls: 0.5
+  scheduler:
+    type: LinearLR
+    warmup:
+      epochs: 3.0
+    args:
+      total_iters: ${task.epoch}
+      start_factor: 1
+      end_factor: 0.01
+  ema:
+    enable: true
+    decay: 0.995
+dataset:
+  path: /home/tkys/playground/signage-narumiya/pre-20250701/data/yolo_dataset_fixed
+  train: train
+  validation: val
+  class_num: 1
+  class_list:
+  - mezzopiano
+  train_images: 100
+  val_images: 80
+  total_images: 180
+  auto_download: false
+model:
+  name: v9-s
+  anchor:
+    reg_max: 16
+  model:
+    backbone:
+    - Conv:
+        args:
+          out_channels: 32
+          kernel_size: 3
+          stride: 2
+        source: 0
+    - Conv:
+        args:
+          out_channels: 64
+          kernel_size: 3
+          stride: 2
+    - ELAN:
+        args:
+          out_channels: 64
+          part_channels: 64
+    - AConv:
+        args:
+          out_channels: 128
+    - RepNCSPELAN:
+        args:
+          out_channels: 128
+          part_channels: 128
+          csp_args:
+            repeat_num: 3
+        tags: B3
+    - AConv:
+        args:
+          out_channels: 192
+    - RepNCSPELAN:
+        args:
+          out_channels: 192
+          part_channels: 192
+          csp_args:
+            repeat_num: 3
+        tags: B4
+    - AConv:
+        args:
+          out_channels: 256
+    - RepNCSPELAN:
+        args:
+          out_channels: 256
+          part_channels: 256
+          csp_args:
+            repeat_num: 3
+        tags: B5
+    neck:
+    - SPPELAN:
+        args:
+          out_channels: 256
+        tags: N3
+    - UpSample:
+        args:
+          scale_factor: 2
+          mode: nearest
+    - Concat:
+        source:
+        - -1
+        - B4
+    - RepNCSPELAN:
+        args:
+          out_channels: 192
+          part_channels: 192
+          csp_args:
+            repeat_num: 3
+        tags: N4
+    head:
+    - UpSample:
+        args:
+          scale_factor: 2
+          mode: nearest
+    - Concat:
+        source:
+        - -1
+        - B3
+    - RepNCSPELAN:
+        args:
+          out_channels: 128
+          part_channels: 128
+          csp_args:
+            repeat_num: 3
+        tags: P3
+    - AConv:
+        args:
+          out_channels: 96
+    - Concat:
+        source:
+        - -1
+        - N4
+    - RepNCSPELAN:
+        args:
+          out_channels: 192
+          part_channels: 192
+          csp_args:
+            repeat_num: 3
+        tags: P4
+    - AConv:
+        args:
+          out_channels: 128
+    - Concat:
+        source:
+        - -1
+        - N3
+    - RepNCSPELAN:
+        args:
+          out_channels: 256
+          part_channels: 256
+          csp_args:
+            repeat_num: 3
+        tags: P5
+    detection:
+    - MultiheadDetection:
+        source:
+        - P3
+        - P4
+        - P5
+        tags: Main
+        output: true
+    auxiliary:
+    - SPPELAN:
+        source: B5
+        args:
+          out_channels: 256
+        tags: A5
+    - UpSample:
+        args:
+          scale_factor: 2
+          mode: nearest
+    - Concat:
+        source:
+        - -1
+        - B4
+    - RepNCSPELAN:
+        args:
+          out_channels: 192
+          part_channels: 192
+          csp_args:
+            repeat_num: 3
+        tags: A4
+    - UpSample:
+        args:
+          scale_factor: 2
+          mode: nearest
+    - Concat:
+        source:
+        - -1
+        - B3
+    - RepNCSPELAN:
+        args:
+          out_channels: 128
+          part_channels: 128
+          csp_args:
+            repeat_num: 3
+        tags: A3
+    - MultiheadDetection:
+        source:
+        - A3
+        - A4
+        - A5
+        tags: AUX
+        output: true
+device: 0
+cpu_num: 16
+image_size:
+- 640
+- 640
+out_path: runs
+exist_ok: true
+lucky_number: 10
+use_wandb: true
+use_tensorboard: false
+weight: weights/v9-s.pt
